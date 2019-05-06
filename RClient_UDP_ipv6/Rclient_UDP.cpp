@@ -39,6 +39,7 @@
 	#include <string.h>
 	#include <stdlib.h>
 	#include <iostream>
+	#include <ctime>
 #endif
 
 #include "myrandomizer.h"
@@ -160,7 +161,7 @@ int main(int argc, char *argv[]) {
 	   closesocket(s);
    	   WSACleanup();
 	   exit(0);
-   } else {
+   	} else {
 	   printf("data_for_transmission.txt is now open for sending\n");
 	}
    while (1){
@@ -173,30 +174,48 @@ int main(int argc, char *argv[]) {
 			strcpy(send_buffer,temp_buffer);   //the complete packet
 			printf("\n======================================================\n");
 			cout << "calling send_unreliably, to deliver data of size " << strlen(send_buffer) << endl;
-			send_unreliably(s,send_buffer,(result->ai_addr)); //send the packet to the unreliable data channel
-			Sleep(1);  //sleep for 1 millisecond																			
-//********************************************************************
-//RECEIVE
-//********************************************************************
-			addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
-			bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+			bool packetSend = false;
+			while(!packetSend){
+				clock_t StartTime, ElapsedTime;
+				clock_t MaxTime;
+				MaxTime = 0.1 * CLOCKS_PER_SEC;
+				send_unreliably(s,send_buffer,(result->ai_addr)); //send the packet to the unreliable data channel
+				StartTime = clock();
+				Sleep(1);  //sleep for 1 millisecond
+				ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+				while(ElapsedTime < MaxTime){
+	//********************************************************************
+	//RECEIVE
+	//********************************************************************
+					addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
+					bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+					if(bytes != 0){
+						// A packet was received
+						break;
+					}
+					ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+				}
+				if(ElapsedTime > MaxTime){
+					continue;
+				}
+				packetSend = true;
+			}
 //********************************************************************
 //IDENTIFY server's IP address and port number.     
 //********************************************************************      
-	char serverHost[NI_MAXHOST]; 
-    char serverService[NI_MAXSERV];	
-    memset(serverHost, 0, sizeof(serverHost));
-    memset(serverService, 0, sizeof(serverService));
+			char serverHost[NI_MAXHOST]; 
+		    char serverService[NI_MAXSERV];	
+		    memset(serverHost, 0, sizeof(serverHost));
+		    memset(serverService, 0, sizeof(serverService));
 
 
-    getnameinfo((struct sockaddr *)&remoteaddr, addrlen,
-                  serverHost, sizeof(serverHost),
-                  serverService, sizeof(serverService),
-                  NI_NUMERICHOST);
+    		getnameinfo((struct sockaddr *)&remoteaddr, addrlen,
+                  	serverHost, sizeof(serverHost),
+                  	serverService, sizeof(serverService),
+                  	NI_NUMERICHOST);
 
 
-
-    printf("\nReceived a packet of size %d bytes from <<<UDP Server>>> with IP address:%s, at Port:%s\n",bytes,serverHost, serverService); 	   
+    		printf("\nReceived a packet of size %d bytes from <<<UDP Server>>> with IP address:%s, at Port:%s\n",bytes,serverHost, serverService); 	   
 	
 //********************************************************************
 //PROCESS REQUEST

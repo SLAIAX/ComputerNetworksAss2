@@ -63,6 +63,42 @@ int packets_lostbit=0;
 //You are allowed to change this. You will need to alter the NUMBER_OF_WORDS_IN_THE_HEADER if you add a CRC
 #define NUMBER_OF_WORDS_IN_THE_HEADER 2
 
+void extractTokens(char *str, int &CRC, char *command, int &packetNumber, char *data){
+	char * pch;
+     
+  int tokenCounter=0;
+  printf ("Splitting string \"%s\" into tokens:\n\n",str);
+  
+  while (1)
+  {
+	 if(tokenCounter ==0){ 
+       pch = strtok (str, " ,.-'\r\n'");
+    } else {
+		 pch = strtok (NULL, " ,.-'\r\n'");
+	 }
+	 if(pch == NULL) break;
+	 printf ("Token[%d], with %d characters = %s\n",tokenCounter,int(strlen(pch)),pch);
+	 
+    switch(tokenCounter){
+      case 0: CRC = atoi(pch);
+			     break;
+      case 1: //command = new char[strlen(pch)];
+			    strcpy(command, pch);
+		
+		        printf("command = %s, %d characters\n", command, int(strlen(command)));
+              break;			
+		  case 2: packetNumber = atoi(pch);
+		        break;
+		  case 3: //data = new char[strlen(pch)];
+			    strcpy(data, pch);
+		
+		        printf("data = %s, %d characters\n", data, int(strlen(data)));
+              break;			
+    }	
+	tokenCounter++;
+  }
+}
+
 void save_line_without_header(char * receive_buffer,FILE *fout){
 	//char *sep = " "; //separator is the space character
 	
@@ -98,6 +134,8 @@ void save_line_without_header(char * receive_buffer,FILE *fout){
 		exit(1);
 	}
 }
+
+
 
 #define WSVERS MAKEWORD(2,0)
 WSADATA wsadata;

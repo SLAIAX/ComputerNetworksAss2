@@ -57,11 +57,37 @@ int numOfPacketsUncorrupted=0;
 int packets_damagedbit=0;
 int packets_lostbit=0;
 
+#define GENERATOR 0x8005 //0x8005, generator for polynomial division
+
+//for the assignments you can copy and past CRCpolynomial() directly in your C code.
+unsigned int CRCpolynomial(char *buffer){
+	unsigned char i;
+	unsigned int rem=0x0000;
+    unsigned int bufsize=strlen(buffer);
+	
+	while(bufsize--!=0){
+		for(i=0x80;i!=0;i/=2){
+			if((rem&0x8000)!=0){
+				rem=rem<<1;
+				rem^=GENERATOR;
+			} else{
+	   	       rem=rem<<1;
+		    }
+	  		if((*buffer&i)!=0){
+			   rem^=GENERATOR;
+			}
+		}
+		buffer++;
+	}
+	rem=rem&0xffff;
+	return rem;
+}
+
 //*******************************************************************
 //Function to save lines and discard the header
 //*******************************************************************
 //You are allowed to change this. You will need to alter the NUMBER_OF_WORDS_IN_THE_HEADER if you add a CRC
-#define NUMBER_OF_WORDS_IN_THE_HEADER 2
+#define NUMBER_OF_WORDS_IN_THE_HEADER 3
 
 void extractTokens(char *str, int &CRC, char *command, int &packetNumber, char *data){
 	char * pch;
@@ -71,32 +97,45 @@ void extractTokens(char *str, int &CRC, char *command, int &packetNumber, char *
   
   while (1)
   {
-	 if(tokenCounter ==0){ 
-       pch = strtok (str, " ,.-'\r\n'");
+	if(tokenCounter ==0){ 
+        pch = strtok (str, " ,.-'\r\n'");
+    } else if(tokenCounter==3){
+    	pch = strtok (NULL, ",.-'\r\n'");
     } else {
-		 pch = strtok (NULL, " ,.-'\r\n'");
-	 }
-	 if(pch == NULL) break;
-	 printf ("Token[%d], with %d characters = %s\n",tokenCounter,int(strlen(pch)),pch);
+		pch = strtok (NULL, " ,.-'\r\n'");
+	}
+	if(pch == NULL) break;
+	printf ("Token[%d], with %d characters = %s\n",tokenCounter,int(strlen(pch)),pch);
 	 
     switch(tokenCounter){
-      case 0: CRC = atoi(pch);
-			     break;
-      case 1: //command = new char[strlen(pch)];
-			    strcpy(command, pch);
-		
-		        printf("command = %s, %d characters\n", command, int(strlen(command)));
-              break;			
-		  case 2: packetNumber = atoi(pch);
-		        break;
-		  case 3: //data = new char[strlen(pch)];
-			    strcpy(data, pch);
-		
-		        printf("data = %s, %d characters\n", data, int(strlen(data)));
-              break;			
+      	case 0: 
+      		CRC = atoi(pch);
+			break;
+      	case 1: 	
+      		//command = new char[strlen(pch)];
+			strcpy(command, pch);
+		    printf("command = %s, %d characters\n", command, int(strlen(command)));
+            break;			
+		case 2: 
+	  		packetNumber = atoi(pch);
+	        break;
+		case 3: 
+			//data = new char[strlen(pch)];
+		    strcpy(data, pch);
+	        printf("data = %s, %d characters\n", data, int(strlen(data)));
+          	break;			
     }	
 	tokenCounter++;
   }
+}
+
+void save_data(char* data, FILE *fout){
+	printf("Saving Data\nData is: %s\n", data);
+	if (fout!=NULL) fprintf(fout,"%s\n",data); //write to file
+	else {
+		printf("Error in writing to write...\n");
+		exit(1);
+	}
 }
 
 void save_line_without_header(char * receive_buffer,FILE *fout){
@@ -134,8 +173,6 @@ void save_line_without_header(char * receive_buffer,FILE *fout){
 		exit(1);
 	}
 }
-
-
 
 #define WSVERS MAKEWORD(2,0)
 WSADATA wsadata;
@@ -295,23 +332,35 @@ int main(int argc, char *argv[]) {
 		
 		printf("\n================================================\n");	
 		printf("RECEIVED --> %s \n",receive_buffer);
-		
-		if (strncmp(receive_buffer,"PACKET",6)==0)  {
+
+		/// Our work
+		int CRC;
+		char command[256];
+		int packetNumber;
+		char data[256];
+
+		memset(data, 0, sizeof(data));
+		memset(command, 0, sizeof(command));
+
+		extractTokens(receive_buffer, CRC, command, packetNumber, data);
+		if (strcmp(command, "PACKET")==0)  {
 			sscanf(receive_buffer, "PACKET %d",&counter);
+			int recvdCRC = CRCpolynomial(data);
+			if(recvdCRC != CRC){
+				sprintf(send_buffer,"NAK %d \r\n",counter);
+			} else {
 //********************************************************************
 //SEND ACK
 //********************************************************************
-			sprintf(send_buffer,"ACK %d \r\n",counter);
-			
+				sprintf(send_buffer,"ACK %d \r\n",counter);
+				//store the packet's data into a file
+				save_data(data,fout);
+			}
 			//send ACK ureliably
-		
 			send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );  
-			
-			//store the packet's data into a file
-			save_line_without_header(receive_buffer,fout);
 		}
 		else {
-			if (strncmp(receive_buffer,"CLOSE",5)==0)  {//if client says "CLOSE", the last packet for the file was sent. Close the file
+			if (strcmp(command, "CLOSE")==0)  {//if client says "CLOSE", the last packet for the file was sent. Close the file
 				//Remember that the packet carrying "CLOSE" may be lost or damaged as well!
 				fclose(fout);
 				closesocket(s);

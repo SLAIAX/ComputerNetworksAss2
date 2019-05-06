@@ -47,6 +47,8 @@
 using namespace std;
 
 #define WSVERS MAKEWORD(2,0)
+
+#define GENERATOR 0x8005 //0x8005, generator for polynomial division
 #define BUFFER_SIZE 80  //used by receive_buffer and send_buffer
                         //the BUFFER_SIZE has to be at least big enough to receive the packet
 #define SEGMENT_SIZE 78
@@ -61,6 +63,29 @@ int numOfPacketsUncorrupted=0;
 
 int packets_damagedbit=0;
 int packets_lostbit=0;
+
+unsigned int CRCpolynomial(char *buffer){
+	unsigned char i;
+	unsigned int rem=0x0000;
+    unsigned int bufsize=strlen(buffer);
+	
+	while(bufsize--!=0){
+		for(i=0x80;i!=0;i/=2){
+			if((rem&0x8000)!=0){
+				rem=rem<<1;
+				rem^=GENERATOR;
+			} else{
+	   	       rem=rem<<1;
+		    }
+	  		if((*buffer&i)!=0){
+			   rem^=GENERATOR;
+			}
+		}
+		buffer++;
+	}
+	rem=rem&0xffff;
+	return rem;
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
@@ -168,7 +193,10 @@ int main(int argc, char *argv[]) {
 		memset(send_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
 		if (!feof(fin)) {
 			fgets(send_buffer,SEGMENT_SIZE,fin); //get one line of data from the file
-			sprintf(temp_buffer,"PACKET %d ",counter);  //create packet header with Sequence number
+
+			unsigned int CRC = CRCpolynomial(send_buffer);
+
+			sprintf(temp_buffer,"%d PACKET %d ", CRC, counter);  //create packet header with Sequence number
 			counter++;
 			strcat(temp_buffer,send_buffer);   //append data to packet header
 			strcpy(send_buffer,temp_buffer);   //the complete packet
@@ -240,7 +268,7 @@ int main(int argc, char *argv[]) {
 			fclose(fin);
 			printf("End-of-File reached. \n"); 
 			memset(send_buffer, 0, sizeof(send_buffer)); 
-			sprintf(send_buffer,"CLOSE \r\n"); //send a CLOSE command to the RECEIVER (Server)
+			sprintf(send_buffer,"0 CLOSE 0 0 \r\n"); //send a CLOSE command to the RECEIVER (Server)
 			printf("\n======================================================\n");
 			
 			send_unreliably(s,send_buffer,(result->ai_addr));

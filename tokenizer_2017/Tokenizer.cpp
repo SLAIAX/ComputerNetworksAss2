@@ -54,6 +54,7 @@ void extractTokens(char *str, int &CRC, char *command, int &packetNumber, char *
     }	
 	  
 	 tokenCounter++;
+   //DEBUG
   }
 }
 

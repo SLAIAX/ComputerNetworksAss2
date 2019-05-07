@@ -48,6 +48,7 @@ using namespace std;
 
 #define WSVERS MAKEWORD(2,0)
 
+#define TIMEOUT 1
 #define GENERATOR 0x8005 //0x8005, generator for polynomial division
 #define BUFFER_SIZE 80  //used by receive_buffer and send_buffer
                         //the BUFFER_SIZE has to be at least big enough to receive the packet
@@ -85,6 +86,21 @@ unsigned int CRCpolynomial(char *buffer){
 	}
 	rem=rem&0xffff;
 	return rem;
+}
+
+void cleanString(char* data){
+	int n=0;
+	int len = strlen(data); 
+	while(n < len){
+		n++;
+		if ((len < 0) || (len == 0)) break;
+		if (data[n] == '\n') { /*end on a LF*/
+			data[n] = '\0';
+			break;
+		}
+		if (data[n] == '\r') /*ignore CRs*/
+			data[n] = '\0';
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -194,19 +210,19 @@ int main(int argc, char *argv[]) {
 		if (!feof(fin)) {
 			fgets(send_buffer,SEGMENT_SIZE,fin); //get one line of data from the file
 
-			unsigned int CRC = CRCpolynomial(send_buffer);
-
-			sprintf(temp_buffer,"%d PACKET %d ", CRC, counter);  //create packet header with Sequence number
+			sprintf(temp_buffer,"PACKET %d ", counter);  //create packet header with Sequence number
 			counter++;
 			strcat(temp_buffer,send_buffer);   //append data to packet header
-			strcpy(send_buffer,temp_buffer);   //the complete packet
+			cleanString(temp_buffer);
+			unsigned int CRC = CRCpolynomial(temp_buffer);
+			sprintf(send_buffer, "%d %s", CRC, temp_buffer); //the complete packet
 			printf("\n======================================================\n");
 			cout << "calling send_unreliably, to deliver data of size " << strlen(send_buffer) << endl;
 			bool packetSend = false;
 			while(!packetSend){
 				clock_t StartTime, ElapsedTime;
 				clock_t MaxTime;
-				MaxTime = 0.1 * CLOCKS_PER_SEC;
+				MaxTime = TIMEOUT * CLOCKS_PER_SEC;
 				send_unreliably(s,send_buffer,(result->ai_addr)); //send the packet to the unreliable data channel
 				StartTime = clock();
 				Sleep(1);  //sleep for 1 millisecond
@@ -226,49 +242,54 @@ int main(int argc, char *argv[]) {
 				if(ElapsedTime > MaxTime){
 					continue;
 				}
-				packetSend = true;
-			}
+				
 //********************************************************************
 //IDENTIFY server's IP address and port number.     
 //********************************************************************      
-			char serverHost[NI_MAXHOST]; 
-		    char serverService[NI_MAXSERV];	
-		    memset(serverHost, 0, sizeof(serverHost));
-		    memset(serverService, 0, sizeof(serverService));
+				char serverHost[NI_MAXHOST]; 
+			    char serverService[NI_MAXSERV];	
+			    memset(serverHost, 0, sizeof(serverHost));
+			    memset(serverService, 0, sizeof(serverService));
 
 
-    		getnameinfo((struct sockaddr *)&remoteaddr, addrlen,
+    			getnameinfo((struct sockaddr *)&remoteaddr, addrlen,
                   	serverHost, sizeof(serverHost),
                   	serverService, sizeof(serverService),
                   	NI_NUMERICHOST);
 
 
-    		printf("\nReceived a packet of size %d bytes from <<<UDP Server>>> with IP address:%s, at Port:%s\n",bytes,serverHost, serverService); 	   
+    			printf("\nReceived a packet of size %d bytes from <<<UDP Server>>> with IP address:%s, at Port:%s\n",bytes,serverHost, serverService); 	   
 	
 //********************************************************************
 //PROCESS REQUEST
 //********************************************************************
 			//Remove trailing CR and LN
-			if( bytes != SOCKET_ERROR ){	
-				n=0;
-				while (n<bytes){
-					n++;
-					if ((bytes < 0) || (bytes == 0)) break;	
-					if (receive_buffer[n] == '\n') { /*end on a LF*/
+				if( bytes != SOCKET_ERROR ){	
+					n=0;
+					while (n<bytes){
+						n++;
+						if ((bytes < 0) || (bytes == 0)) break;	
+						if (receive_buffer[n] == '\n') { /*end on a LF*/
+							receive_buffer[n] = '\0';
+							break;
+						}
+						if (receive_buffer[n] == '\r') /*ignore CRs*/
 						receive_buffer[n] = '\0';
-						break;
 					}
-					if (receive_buffer[n] == '\r') /*ignore CRs*/
-					receive_buffer[n] = '\0';
+					printf("RECEIVED --> %s, %d elements\n",receive_buffer, int(strlen(receive_buffer)));
 				}
-				printf("RECEIVED --> %s, %d elements\n",receive_buffer, int(strlen(receive_buffer)));
+				printf("Receive buffer before strncmp: %s\n", receive_buffer);
+				if(strncmp(receive_buffer, "ACK", 3)==0){
+					packetSend = true;
+				} 
 			}
-			
 		} else {
 			fclose(fin);
 			printf("End-of-File reached. \n"); 
-			memset(send_buffer, 0, sizeof(send_buffer)); 
-			sprintf(send_buffer,"0 CLOSE 0 0 \r\n"); //send a CLOSE command to the RECEIVER (Server)
+			memset(send_buffer, 0, sizeof(send_buffer));
+			sprintf(temp_buffer,"CLOSE %d 0", counter); //send a CLOSE command to the RECEIVER (Server)
+			unsigned int CRC = CRCpolynomial(temp_buffer);
+			sprintf(send_buffer, "%d %s", CRC, temp_buffer);
 			printf("\n======================================================\n");
 			
 			send_unreliably(s,send_buffer,(result->ai_addr));

@@ -343,21 +343,24 @@ int main(int argc, char *argv[]) {
 		memset(command, 0, sizeof(command));
 
 		extractTokens(receive_buffer, CRC, command, packetNumber, data);
+		char packetInfo[1024];
+		memset(packetInfo, 0, sizeof(packetInfo));
+		sprintf(packetInfo, "%s %d %s", command, packetNumber, data);
+		int recvdCRC = CRCpolynomial(packetInfo);
+		if(recvdCRC != CRC){
+			sprintf(send_buffer,"NAK %d \r\n",packetNumber);
+			send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );
+			continue;
+		} else {
+			sprintf(send_buffer,"ACK %d \r\n",packetNumber);
+		}
+		// Check for order
+		send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );  
 		if (strcmp(command, "PACKET")==0)  {
-			sscanf(receive_buffer, "PACKET %d",&counter);
-			int recvdCRC = CRCpolynomial(data);
-			if(recvdCRC != CRC){
-				sprintf(send_buffer,"NAK %d \r\n",counter);
-			} else {
 //********************************************************************
 //SEND ACK
 //********************************************************************
-				sprintf(send_buffer,"ACK %d \r\n",counter);
-				//store the packet's data into a file
-				save_data(data,fout);
-			}
-			//send ACK ureliably
-			send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );  
+			save_data(data,fout);
 		}
 		else {
 			if (strcmp(command, "CLOSE")==0)  {//if client says "CLOSE", the last packet for the file was sent. Close the file
@@ -369,6 +372,8 @@ int main(int argc, char *argv[]) {
 				break;
 			}
 			else {//it is not a PACKET nor a CLOSE; therefore, it might be a damaged packet
+				fclose(fout);
+				closesocket(s);
 				   //Are you going to do nothing, ignoring the damaged packet? 
 				   //Or, send a negative ACK? It is up to you to decide here.
 			}

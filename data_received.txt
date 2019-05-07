@@ -1,6 +1,13 @@
 data 0 aa
+data 0 aa
+data 0 aa
+data 2 cccc
+data 2 cccc
 data 2 cccc
 data 3 ddddd
-data 4 eeeeee
 data 5 fffffff
+data 6 gggggggg
+data 6 gggggggg
+data 6 gggggggg
+data 6 gggggggg
 data 8 iiiiiiiiii

@@ -242,17 +242,10 @@ int main(int argc, char *argv[]) {
 	   printf("data_for_transmission.txt is now open for sending\n");
 	}
 	int loop = 1;
-<<<<<<< HEAD
-   	while (loop){
-	   	clock_t StartTime, ElapsedTime;
+    while (loop){
+	   	clock_t StartTime, ElapsedTime, TimeoutTime;
 		clock_t MaxTime;
 		MaxTime = TIMEOUT * CLOCKS_PER_SEC;
-=======
-   while (loop){
-   	clock_t StartTime, ElapsedTime, TimeoutTime;
-	clock_t MaxTime;
-	MaxTime = TIMEOUT * CLOCKS_PER_SEC;
->>>>>>> 704748727bd815b7b40844e097e97e5fa2e2d744
 		memset(send_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
 		
 		if (!feof(fin)) {

@@ -40,9 +40,8 @@ void extractTokens(char *str, int &CRC, char *command, int &packetNumber, char *
       case 0: CRC = atoi(pch);
 			     break;
       case 1: //command = new char[strlen(pch)];
-			     strcpy(command, pch);
-		
-		        printf("command = %s, %d characters\n", command, int(strlen(command)));
+			    strcpy(command, pch);
+		      printf("command = %s, %d characters\n", command, int(strlen(command)));
               break;			
 		  case 2: packetNumber = atoi(pch);
 		        break;
@@ -54,7 +53,6 @@ void extractTokens(char *str, int &CRC, char *command, int &packetNumber, char *
     }	
 	  
 	 tokenCounter++;
-   //DEBUG
   }
 }
 

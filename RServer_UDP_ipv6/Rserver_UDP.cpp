@@ -188,6 +188,17 @@ int main(int argc, char *argv[]) {
 	struct addrinfo *result = NULL;
     struct addrinfo hints;
 	int iResult;
+
+
+		/// Our work
+		int CRC;
+		char command[256];
+		int packetNumber;
+		char data[256];
+		int prevPacket = 99;
+
+		memset(data, 0, sizeof(data));
+		memset(command, 0, sizeof(command));
 	
     SOCKET s;
     char send_buffer[BUFFER_SIZE],receive_buffer[BUFFER_SIZE];
@@ -333,14 +344,6 @@ int main(int argc, char *argv[]) {
 		printf("\n================================================\n");	
 		printf("RECEIVED --> %s \n",receive_buffer);
 
-		/// Our work
-		int CRC;
-		char command[256];
-		int packetNumber;
-		char data[256];
-
-		memset(data, 0, sizeof(data));
-		memset(command, 0, sizeof(command));
 
 		extractTokens(receive_buffer, CRC, command, packetNumber, data);
 		char packetInfo[1024];
@@ -360,23 +363,23 @@ int main(int argc, char *argv[]) {
 //********************************************************************
 //SEND ACK
 //********************************************************************
-			save_data(data,fout);
+			if(prevPacket != packetNumber){
+				save_data(data,fout);
+				prevPacket = packetNumber;
+			}
+			
+
 		}
-		else {
-			if (strcmp(command, "CLOSE")==0)  {//if client says "CLOSE", the last packet for the file was sent. Close the file
-				//Remember that the packet carrying "CLOSE" may be lost or damaged as well!
-				fclose(fout);
-				closesocket(s);
-				printf("Server saved data_received.txt \n");//you have to manually check to see if this file is identical to file1_Windows.txt
-				printf("Closing the socket connection and Exiting...\n");
-				break;
-			}
-			else {//it is not a PACKET nor a CLOSE; therefore, it might be a damaged packet
-				fclose(fout);
-				closesocket(s);
-				   //Are you going to do nothing, ignoring the damaged packet? 
-				   //Or, send a negative ACK? It is up to you to decide here.
-			}
+		else if(strcmp(command, "CLOSE")==0)  {//if client says "CLOSE", the last packet for the file was sent. Close the file
+			//Remember that the packet carrying "CLOSE" may be lost or damaged as well!
+			
+			//sprintf(send_buffer,"ACK %d \r\n",packetNumber);
+			//send_unreliably(s,send_buffer,(sockaddr*)&clientAddress ); 
+			fclose(fout);
+			closesocket(s);
+			printf("Server saved data_received.txt \n");//you have to manually check to see if this file is identical to file1_Windows.txt
+			printf("Closing the socket connection and Exiting...\n");
+			break;
 		}
    }
    closesocket(s);

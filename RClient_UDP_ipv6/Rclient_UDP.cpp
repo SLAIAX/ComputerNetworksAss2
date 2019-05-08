@@ -48,7 +48,7 @@ using namespace std;
 
 #define WSVERS MAKEWORD(2,0)
 
-#define TIMEOUT 1
+#define TIMEOUT 0.001
 #define GENERATOR 0x8005 //0x8005, generator for polynomial division
 #define BUFFER_SIZE 80  //used by receive_buffer and send_buffer
                         //the BUFFER_SIZE has to be at least big enough to receive the packet
@@ -58,6 +58,9 @@ using namespace std;
 WSADATA wsadata;
 const int ARG_COUNT=5;
 //---
+
+
+
 int numOfPacketsDamaged=0;
 int numOfPacketsLost=0;
 int numOfPacketsUncorrupted=0;
@@ -205,8 +208,13 @@ int main(int argc, char *argv[]) {
    	} else {
 	   printf("data_for_transmission.txt is now open for sending\n");
 	}
-   while (1){
+	int loop = 1;
+   while (loop){
+   	clock_t StartTime, ElapsedTime;
+	clock_t MaxTime;
+	MaxTime = TIMEOUT * CLOCKS_PER_SEC;
 		memset(send_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
+		
 		if (!feof(fin)) {
 			fgets(send_buffer,SEGMENT_SIZE,fin); //get one line of data from the file
 
@@ -220,9 +228,7 @@ int main(int argc, char *argv[]) {
 			cout << "calling send_unreliably, to deliver data of size " << strlen(send_buffer) << endl;
 			bool packetSend = false;
 			while(!packetSend){
-				clock_t StartTime, ElapsedTime;
-				clock_t MaxTime;
-				MaxTime = TIMEOUT * CLOCKS_PER_SEC;
+				
 				send_unreliably(s,send_buffer,(result->ai_addr)); //send the packet to the unreliable data channel
 				StartTime = clock();
 				Sleep(1);  //sleep for 1 millisecond
@@ -232,7 +238,17 @@ int main(int argc, char *argv[]) {
 	//RECEIVE
 	//********************************************************************
 					addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
+					memset(receive_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
+					bytes = 0;
 					bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+					while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
+						//Sleep(1);
+						bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+						ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+						//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
+						
+					}
+					
 					if(bytes != 0){
 						// A packet was received
 						break;
@@ -240,6 +256,7 @@ int main(int argc, char *argv[]) {
 					ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 				}
 				if(ElapsedTime > MaxTime){
+
 					continue;
 				}
 				
@@ -291,9 +308,36 @@ int main(int argc, char *argv[]) {
 			unsigned int CRC = CRCpolynomial(temp_buffer);
 			sprintf(send_buffer, "%d %s", CRC, temp_buffer);
 			printf("\n======================================================\n");
-			
-			send_unreliably(s,send_buffer,(result->ai_addr));
-			break;
+			bool packetSend = false;
+			while(!packetSend){
+				send_unreliably(s,send_buffer,(result->ai_addr));
+				StartTime = clock();
+				Sleep(1);  //sleep for 1 millisecond
+				ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+				while(ElapsedTime < MaxTime){
+					addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
+					memset(receive_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
+					bytes = 0;
+					bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+					while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
+						//Sleep(1);
+						bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+						ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+						//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
+					}
+					if(bytes != 0){
+						// A packet was received
+						break;
+					}
+					ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+				}
+				printf("Receive buffer before strncmp: %s\n", receive_buffer);
+				if(strncmp(receive_buffer, "ACK", 3)==0){
+					packetSend = true;
+					loop = false;
+				} 
+			}			
+
 		}
 		
    } //while loop

@@ -242,10 +242,17 @@ int main(int argc, char *argv[]) {
 	   printf("data_for_transmission.txt is now open for sending\n");
 	}
 	int loop = 1;
+<<<<<<< HEAD
    	while (loop){
 	   	clock_t StartTime, ElapsedTime;
 		clock_t MaxTime;
 		MaxTime = TIMEOUT * CLOCKS_PER_SEC;
+=======
+   while (loop){
+   	clock_t StartTime, ElapsedTime, TimeoutTime;
+	clock_t MaxTime;
+	MaxTime = TIMEOUT * CLOCKS_PER_SEC;
+>>>>>>> 704748727bd815b7b40844e097e97e5fa2e2d744
 		memset(send_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
 		
 		if (!feof(fin)) {
@@ -357,6 +364,7 @@ int main(int argc, char *argv[]) {
 				send_unreliably(s,send_buffer,(result->ai_addr));
 				StartTime = clock();
 				Sleep(1);  //sleep for 1 millisecond
+				TimeoutTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 				ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 				while(ElapsedTime < MaxTime){
 					addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
@@ -366,6 +374,7 @@ int main(int argc, char *argv[]) {
 					while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
 						//Sleep(1);
 						bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+						TimeoutTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 						ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 						//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
 					}
@@ -373,6 +382,7 @@ int main(int argc, char *argv[]) {
 						// A packet was received
 						break;
 					}
+					TimeoutTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 					ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 				}
 				// Extract parts from packet and examine
@@ -391,6 +401,9 @@ int main(int argc, char *argv[]) {
 					packetSend = true;
 					loop = false;
 				} 
+				if(TimeoutTime > (MaxTime*10)){
+					loop = false;
+				}
 			}			
 
 		}

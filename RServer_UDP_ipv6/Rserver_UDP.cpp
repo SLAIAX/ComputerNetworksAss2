@@ -349,16 +349,22 @@ int main(int argc, char *argv[]) {
 		char packetInfo[1024];
 		memset(packetInfo, 0, sizeof(packetInfo));
 		sprintf(packetInfo, "%s %d %s", command, packetNumber, data);
+		char temp_buffer[BUFFER_SIZE];
 		int recvdCRC = CRCpolynomial(packetInfo);
+		int sendCRC;
 		if(recvdCRC != CRC){
-			sprintf(send_buffer,"NAK %d \r\n",packetNumber);
+			sprintf(temp_buffer,"NAK %d",packetNumber);
+			sendCRC = CRCpolynomial(temp_buffer);
+			sprintf(send_buffer, "%d %s \r\n", sendCRC, temp_buffer);
 			send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );
 			continue;
 		} else {
-			sprintf(send_buffer,"ACK %d \r\n",packetNumber);
+			sprintf(temp_buffer,"ACK %d",packetNumber);
+			sendCRC = CRCpolynomial(temp_buffer);
+			sprintf(send_buffer, "%d %s \r\n", sendCRC, temp_buffer);
+			send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );
 		}
-		// Check for order
-		send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );  
+		// Check for order 
 		if (strcmp(command, "PACKET")==0)  {
 //********************************************************************
 //SEND ACK

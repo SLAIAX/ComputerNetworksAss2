@@ -261,32 +261,23 @@ int main(int argc, char *argv[]) {
 			cout << "calling send_unreliably, to deliver data of size " << strlen(send_buffer) << endl;
 			bool packetSend = false;
 			while(!packetSend){
-				
 				send_unreliably(s,send_buffer,(result->ai_addr)); //send the packet to the unreliable data channel
 				StartTime = clock();
 				Sleep(1);  //sleep for 1 millisecond
 				ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-				while(ElapsedTime < MaxTime){
 	//********************************************************************
 	//RECEIVE
 	//********************************************************************
-					addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
-					memset(receive_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
+				addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
+				memset(receive_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
+				bytes = 0;
+				bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+				while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
+					//Sleep(1);
 					bytes = 0;
 					bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
-					while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
-						//Sleep(1);
-						bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
-						ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-						//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
-						
-					}
-					
-					if(bytes != 0){
-						// A packet was received
-						break;
-					}
 					ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+					//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);	
 				}
 				if(ElapsedTime > MaxTime){
 
@@ -357,26 +348,17 @@ int main(int argc, char *argv[]) {
 				send_unreliably(s,send_buffer,(result->ai_addr));
 				StartTime = clock();
 				Sleep(1);  //sleep for 1 millisecond
-				TimeoutTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 				ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-				while(ElapsedTime < MaxTime){
-					addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
-					memset(receive_buffer, 0, sizeof(receive_buffer));//clean up the send_buffer before reading the next line
+				addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
+				memset(receive_buffer, 0, sizeof(receive_buffer));//clean up the send_buffer before reading the next line
+				bytes = 0;
+				bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+				while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
+					//Sleep(1);
 					bytes = 0;
 					bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
-					while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
-						//Sleep(1);
-						bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
-						TimeoutTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-						ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-						//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
-					}
-					if(bytes != 0){
-						// A packet was received
-						break;
-					}
-					TimeoutTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 					ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+					//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
 				}
 				// Extract parts from packet and examine
 				int recvCRC = 0;

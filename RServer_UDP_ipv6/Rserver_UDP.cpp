@@ -373,8 +373,6 @@ int main(int argc, char *argv[]) {
 				save_data(data,fout);
 				prevPacket = packetNumber;
 			}
-			
-
 		}
 		else if(strcmp(command, "CLOSE")==0)  {//if client says "CLOSE", the last packet for the file was sent. Close the file
 			//Remember that the packet carrying "CLOSE" may be lost or damaged as well!

@@ -371,48 +371,49 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	fclose(fin);
-	// printf("End-of-File reached. \n"); 
-	// memset(send_buffer, 0, sizeof(send_buffer));
-	// sprintf(temp_buffer,"CLOSE %d 0", counter); //send a CLOSE command to the RECEIVER (Server)
-	// unsigned int CRC = CRCpolynomial(temp_buffer);
-	// sprintf(send_buffer, "%d %s", CRC, temp_buffer);
-	// printf("\n======================================================\n");
-	// bool packetSend = false;
-	// while(!packetSend){
-	// 	send_unreliably(s,send_buffer,(result->ai_addr));
-	// 	StartTime = clock();
-	// 	Sleep(1);  //sleep for 1 millisecond
-	// 	ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-	// 	addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
-	// 	memset(receive_buffer, 0, sizeof(receive_buffer));//clean up the send_buffer before reading the next line
-	// 	bytes = 0;
-	// 	bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
-	// 	while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
-	// 		//Sleep(1);
-	// 		bytes = 0;
-	// 		bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
-	// 		ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-	// 		//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
-	// 	}
-	// 	// Extract parts from packet and examine
-	// 	int recvCRC = 0;
-	// 	char recvCommand[256];
-	// 	int recvPacketNumber;
-	// 	cleanString(receive_buffer);
-	// 	extractTokens(receive_buffer, recvCRC, recvCommand, recvPacketNumber);
-	// 	char temp_packet[1024];
-	// 	sprintf(temp_packet, "%s %d", recvCommand, recvPacketNumber);
-	// 	printf("Comparing recv CRC = %d and temp packet crc = %d\n", recvCRC, CRCpolynomial(temp_packet));
-	// 	if(CRCpolynomial(temp_packet) != recvCRC){ // Server reply is damaged;
-	// 		continue;
-	// 	}
-	// 	if(strcmp(recvCommand, "ACK")==0){
-	// 		packetSend = true;
-	// 		loop = false;
-	// 	} 
-	// 	if(TimeoutTime > (MaxTime*10)){
-	// 		loop = false;
-	// 	}			
+	 printf("End-of-File reached. \n"); 
+	 memset(send_buffer, 0, sizeof(send_buffer));
+	 sprintf(temp_buffer,"CLOSE %d 0", nextSeqNum); //send a CLOSE command to the RECEIVER (Server)
+	 unsigned int CRC = CRCpolynomial(temp_buffer);
+	 sprintf(send_buffer, "%d %s", CRC, temp_buffer);
+	 printf("\n======================================================\n");
+	 bool packetSend = false;
+	 while(!packetSend){
+	 	send_unreliably(s,send_buffer,(result->ai_addr));
+	 	StartTime = clock();
+	 	Sleep(1);  //sleep for 1 millisecond
+	 	ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+	 	addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
+	 	memset(receive_buffer, 0, sizeof(receive_buffer));//clean up the send_buffer before reading the next line
+	 	bytes = 0;
+	 	bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+	 	while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
+	 		//Sleep(1);
+	 		bytes = 0;
+	 		bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+	 		ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+	 		//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
+	 	}
+	 	// Extract parts from packet and examine
+	 	int recvCRC = 0;
+	 	char recvCommand[256];
+	 	int recvPacketNumber;
+	 	cleanString(receive_buffer);
+	 	extractTokens(receive_buffer, recvCRC, recvCommand, recvPacketNumber);
+	 	char temp_packet[1024];
+	 	sprintf(temp_packet, "%s %d", recvCommand, recvPacketNumber);
+	 	printf("Comparing recv CRC = %d and temp packet crc = %d\n", recvCRC, CRCpolynomial(temp_packet));
+	 	if(CRCpolynomial(temp_packet) != recvCRC){ // Server reply is damaged;
+	 		continue;
+	 	}
+	 	if(strcmp(recvCommand, "ACK")==0){
+	 		packetSend = true;
+	 		break;
+	 	} 
+	 	if(TimeoutTime > (MaxTime*10)){
+	 		break;
+	 	}
+	 }			
 //*******************************************************************
 //CLOSESOCKET   
 //*******************************************************************

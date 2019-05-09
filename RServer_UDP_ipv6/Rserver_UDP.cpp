@@ -190,15 +190,17 @@ int main(int argc, char *argv[]) {
 	int iResult;
 
 
-		/// Our work
-		int CRC;
-		char command[256];
-		int packetNumber;
-		char data[256];
-		int prevPacket = 99;
 
-		memset(data, 0, sizeof(data));
-		memset(command, 0, sizeof(command));
+	/// Our work
+	int CRC;
+	char command[256];
+	int packetNumber;
+	char data[256];
+	int prevPacket = 99;
+	int expectedSeqNum = 0;
+
+	memset(data, 0, sizeof(data));
+	memset(command, 0, sizeof(command));
 	
     SOCKET s;
     char send_buffer[BUFFER_SIZE],receive_buffer[BUFFER_SIZE];
@@ -295,7 +297,7 @@ int main(int argc, char *argv[]) {
 	 
 //INFINITE LOOP
 //********************************************************************
-   while (1) {
+    while (1) {
 //********************************************************************
 //RECEIVE
 //********************************************************************
@@ -307,20 +309,20 @@ int main(int argc, char *argv[]) {
 //********************************************************************
 //IDENTIFY UDP client's IP address and port number.     
 //********************************************************************      
-	char clientHost[NI_MAXHOST]; 
-    char clientService[NI_MAXSERV];	
-    memset(clientHost, 0, sizeof(clientHost));
-    memset(clientService, 0, sizeof(clientService));
+		char clientHost[NI_MAXHOST]; 
+	    char clientService[NI_MAXSERV];	
+	    memset(clientHost, 0, sizeof(clientHost));
+	    memset(clientService, 0, sizeof(clientService));
 
 
-    getnameinfo((struct sockaddr *)&clientAddress, addrlen,
-                  clientHost, sizeof(clientHost),
-                  clientService, sizeof(clientService),
-                  NI_NUMERICHOST);
+	    getnameinfo((struct sockaddr *)&clientAddress, addrlen,
+	                  clientHost, sizeof(clientHost),
+	                  clientService, sizeof(clientService),
+	                  NI_NUMERICHOST);
 
 
 
-    printf("\nReceived a packet of size %d bytes from <<<UDP Client>>> with IP address:%s, at Port:%s\n",bytes,clientHost, clientService); 	   
+	    printf("\nReceived a packet of size %d bytes from <<<UDP Client>>> with IP address:%s, at Port:%s\n",bytes,clientHost, clientService); 	   
 		
 //********************************************************************
 //PROCESS RECEIVED PACKET
@@ -359,11 +361,20 @@ int main(int argc, char *argv[]) {
 			send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );
 			continue;
 		} else {
-			sprintf(temp_buffer,"ACK %d",packetNumber);
-			sendCRC = CRCpolynomial(temp_buffer);
-			sprintf(send_buffer, "%d %s \r\n", sendCRC, temp_buffer);
-			send_unreliably(s,send_buffer,(sockaddr*)&clientAddress );
+			if(expectedSeqNum == packetNumber){
+				expectedSeqNum++;
+				sprintf(temp_buffer,"ACK %d",packetNumber);
+			} else{
+				sprintf(temp_buffer,"ACK %d",expectedSeqNum - 1);
+				sendCRC = CRCpolynomial(temp_buffer);
+				sprintf(send_buffer, "%d %s \r\n", sendCRC, temp_buffer);
+				send_unreliably(s,send_buffer,(sockaddr*)&clientAddress);
+				continue;
+			}	
 		}
+		sendCRC = CRCpolynomial(temp_buffer);
+		sprintf(send_buffer, "%d %s \r\n", sendCRC, temp_buffer);
+		send_unreliably(s,send_buffer,(sockaddr*)&clientAddress);
 		// Check for order 
 		if (strcmp(command, "PACKET")==0)  {
 //********************************************************************
@@ -376,7 +387,6 @@ int main(int argc, char *argv[]) {
 		}
 		else if(strcmp(command, "CLOSE")==0)  {//if client says "CLOSE", the last packet for the file was sent. Close the file
 			//Remember that the packet carrying "CLOSE" may be lost or damaged as well!
-			
 			//sprintf(send_buffer,"ACK %d \r\n",packetNumber);
 			//send_unreliably(s,send_buffer,(sockaddr*)&clientAddress ); 
 			fclose(fout);

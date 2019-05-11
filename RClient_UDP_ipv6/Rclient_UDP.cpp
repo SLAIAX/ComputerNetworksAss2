@@ -100,7 +100,7 @@ void extractTokens(char *str, int &CRC, char *command, int &packetNumber){
   char * pch;
      
   int tokenCounter=0;
-  printf ("Splitting string \"%s\" into tokens:\n\n",str);
+  //printf ("Splitting string \"%s\" into tokens:\n\n",str);
   
   while (1)
   {
@@ -110,7 +110,7 @@ void extractTokens(char *str, int &CRC, char *command, int &packetNumber){
 		pch = strtok (NULL, " ,.-'\r\n'");
 	}
 	if(pch == NULL) break;
-	printf ("Token[%d], with %d characters = %s\n",tokenCounter,int(strlen(pch)),pch);
+	//printf ("Token[%d], with %d characters = %s\n",tokenCounter,int(strlen(pch)),pch);
 	 
     switch(tokenCounter){
       	case 0: 
@@ -119,7 +119,7 @@ void extractTokens(char *str, int &CRC, char *command, int &packetNumber){
       	case 1: 	
       		//command = new char[strlen(pch)];
 			strcpy(command, pch);
-		    printf("command = %s, %d characters\n", command, int(strlen(command)));
+		    //printf("command = %s, %d characters\n", command, int(strlen(command)));
             break;			
 		case 2: 
 	  		packetNumber = atoi(pch);
@@ -281,11 +281,9 @@ int main(int argc, char *argv[]) {
 			bytes = 0;
 			bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
 			while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
-				//Sleep(1);
 				bytes = 0;
 				bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
 				ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-				//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);	
 			}
 			if(ElapsedTime > MaxTime){
 				break;
@@ -364,12 +362,6 @@ int main(int argc, char *argv[]) {
 					remainingWindowNumber++;
 					baseMax = nextSeqNum - 1;
 				}
-
-    			// baseMax = nextSeqNum - 1;
-    			// if(remainingWindowNumber == WINDOW_SIZE){
-    			// 	//break;
-    			// }
-    			//break;						//REMOVED BREAK AS WHEN THIS BREAK OCCURS, THE CONDITION TO ENTER THE IMMEDIATE IF STATEMENT IS TRUE SO IT RESENDS PACKETS IN BUFFER WHEN UN-NEEDED
 	    	}
 	    	ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 		} //If this loop finishes, timeout, NAK or corruption has occured
@@ -400,11 +392,9 @@ int main(int argc, char *argv[]) {
 		bytes = 0;
 		bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
 		while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
-			//Sleep(1);
 			bytes = 0;
 			bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
 			ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-			//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
 		}
 		// Extract parts from packet and examine
 		if(ElapsedTime > MaxTime){
@@ -441,7 +431,6 @@ int main(int argc, char *argv[]) {
    cout << "numOfPacketsLost=" << numOfPacketsLost << endl;
    cout << "numOfPacketsUncorrupted=" << numOfPacketsUncorrupted << endl;
    cout << "===========================================" << endl;
-
    exit(0);
 }
 	

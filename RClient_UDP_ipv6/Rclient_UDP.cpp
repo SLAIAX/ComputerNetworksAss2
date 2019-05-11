@@ -48,9 +48,9 @@ using namespace std;
 
 #define WSVERS MAKEWORD(2,0)
 
-#define WINDOW_SIZE 4
+#define WINDOW_SIZE 5
 
-#define TIMEOUT 0.001
+#define TIMEOUT 0.001 //  a second 
 #define GENERATOR 0x8005 //0x8005, generator for polynomial division
 #define BUFFER_SIZE 80  //used by receive_buffer and send_buffer
                         //the BUFFER_SIZE has to be at least big enough to receive the packet

@@ -6,7 +6,7 @@
 //RUN WITH: Rclient_UDP 127.0.0.1 1235 0 0 
 //RUN WITH: Rclient_UDP 127.0.0.1 1235 0 1 
 //RUN WITH: Rclient_UDP 127.0.0.1 1235 1 0 
-//RUN WITH: Rclient_UDP 127.0.0.1 1235 1 1 
+//RUN WITH: Rclient_UDP 127.0.0.1 1235 1 1  
 //************************************************************************/
 
 //---
@@ -230,7 +230,6 @@ int main(int argc, char *argv[]) {
 //*******************************************************************
 //SEND A TEXT FILE 
 //*******************************************************************
-   int counter=0;
    char temp_buffer[BUFFER_SIZE];
    FILE *fin=fopen("data_for_transmission.txt","rb"); //original
 	
@@ -247,7 +246,7 @@ int main(int argc, char *argv[]) {
 	   printf("data_for_transmission.txt is now open for sending\n");
 	}
     	// Start window timer
-   	clock_t StartTime, ElapsedTime, TimeoutTime;
+   	clock_t StartTime, ElapsedTime;
 	clock_t MaxTime;
 	MaxTime = TIMEOUT * CLOCKS_PER_SEC;
 	memset(send_buffer, 0, sizeof(send_buffer));//clean up the send_buffer before reading the next line
@@ -274,6 +273,7 @@ int main(int argc, char *argv[]) {
 		StartTime = clock();
 		Sleep(1);  //sleep for 1 millisecond
 		ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+		int remainingWindowNumber = 0;
 		while(ElapsedTime < MaxTime){
 			//Receive packet
 			addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
@@ -330,17 +330,18 @@ int main(int argc, char *argv[]) {
 			extractTokens(receive_buffer, recvCRC, recvCommand, recvPacketNumber);
 			char temp_packet[1024];
 			sprintf(temp_packet, "%s %d", recvCommand, recvPacketNumber);
+			int CRCToCompare = CRCpolynomial(temp_packet);		//To get rid of warning
 			//Check CRC
-			if(CRCpolynomial(temp_packet) != recvCRC){ // Server reply is damaged;
-				break;
+			if(CRCToCompare != recvCRC){ // Server reply is damaged;
+				continue;
 			}
 			//Check packet number
 			if(recvPacketNumber != base){
-				break;
+				continue;
 			}
 			//Check ACK or NAK
 			if(strcmp(recvCommand, "NAK")==0){
-				break;
+				continue;
 			}
 			base++;
 			baseMax++;
@@ -359,61 +360,66 @@ int main(int argc, char *argv[]) {
 				nextSeqNum++;
 				StartTime = clock();
 			} else{
+				remainingWindowNumber++;
     			baseMax = nextSeqNum - 1;
-    			break;
+    			if(remainingWindowNumber == WINDOW_SIZE){
+    				break;
+    			}
+    			//break;						//REMOVED BREAK AS WHEN THIS BREAK OCCURS, THE CONDITION TO ENTER THE IMMEDIATE IF STATEMENT IS TRUE SO IT RESENDS PACKETS IN BUFFER WHEN UN-NEEDED
 	    	}
 	    	ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 		} //If this loop finishes, timeout, NAK or corruption has occured
 		if (base < baseMax){ // Not at end of data, must resend base
-			for(int i = 0; i < (baseMax-base); ++i){
+			for(int i = 0; i <= (baseMax-base); ++i){
 				send_unreliably(s, windowBuffer[(base+i) % WINDOW_SIZE], (result->ai_addr));
 			}
 		}
 	}
 	fclose(fin);
-	 printf("End-of-File reached. \n"); 
-	 memset(send_buffer, 0, sizeof(send_buffer));
-	 sprintf(temp_buffer,"CLOSE %d 0", nextSeqNum); //send a CLOSE command to the RECEIVER (Server)
-	 unsigned int CRC = CRCpolynomial(temp_buffer);
-	 sprintf(send_buffer, "%d %s", CRC, temp_buffer);
-	 printf("\n======================================================\n");
-	 bool packetSend = false;
-	 while(!packetSend){
-	 	send_unreliably(s,send_buffer,(result->ai_addr));
-	 	StartTime = clock();
-	 	Sleep(1);  //sleep for 1 millisecond
-	 	ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-	 	addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
-	 	memset(receive_buffer, 0, sizeof(receive_buffer));//clean up the send_buffer before reading the next line
-	 	bytes = 0;
-	 	bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
-	 	while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
-	 		//Sleep(1);
-	 		bytes = 0;
-	 		bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
-	 		ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
-	 		//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
-	 	}
-	 	// Extract parts from packet and examine
-	 	int recvCRC = 0;
-	 	char recvCommand[256];
-	 	int recvPacketNumber;
-	 	cleanString(receive_buffer);
-	 	extractTokens(receive_buffer, recvCRC, recvCommand, recvPacketNumber);
-	 	char temp_packet[1024];
-	 	sprintf(temp_packet, "%s %d", recvCommand, recvPacketNumber);
-	 	printf("Comparing recv CRC = %d and temp packet crc = %d\n", recvCRC, CRCpolynomial(temp_packet));
-	 	if(CRCpolynomial(temp_packet) != recvCRC){ // Server reply is damaged;
+	printf("End-of-File reached. \n"); 
+	memset(send_buffer, 0, sizeof(send_buffer));
+	sprintf(temp_buffer,"CLOSE %d 0", nextSeqNum); //send a CLOSE command to the RECEIVER (Server)
+	unsigned int CRC = CRCpolynomial(temp_buffer);
+	sprintf(send_buffer, "%d %s", CRC, temp_buffer);
+	printf("\n======================================================\n");
+	bool packetSend = false;
+	while(!packetSend){
+		send_unreliably(s,send_buffer,(result->ai_addr));
+		StartTime = clock();
+		Sleep(1);  //sleep for 1 millisecond
+		ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+		addrlen = sizeof(remoteaddr); //IPv4 & IPv6-compliant
+		memset(receive_buffer, 0, sizeof(receive_buffer));//clean up the send_buffer before reading the next line
+		bytes = 0;
+		bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+		while(strcmp(receive_buffer,"")==0  && ElapsedTime < MaxTime ){
+			//Sleep(1);
+			bytes = 0;
+			bytes = recvfrom(s, receive_buffer, 78, 0,(struct sockaddr*)&remoteaddr,&addrlen);
+			ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
+			//printf("ElapsedTime = %d, out of %d \n",ElapsedTime, MaxTime);
+		}
+		// Extract parts from packet and examine
+		if(ElapsedTime > MaxTime){
+			continue;
+		}
+		int recvCRC = 0;
+		char recvCommand[256];
+		int recvPacketNumber;
+		cleanString(receive_buffer);
+		extractTokens(receive_buffer, recvCRC, recvCommand, recvPacketNumber);
+		char temp_packet[1024];
+		sprintf(temp_packet, "%s %d", recvCommand, recvPacketNumber);
+		printf("Comparing recv CRC = %d and temp packet crc = %d\n", recvCRC, CRCpolynomial(temp_packet));
+		int CRCToCompare = CRCpolynomial(temp_packet);		//To get rid of warning
+		if(CRCToCompare != recvCRC){ // Server reply is damaged;
 	 		continue;
 	 	}
 	 	if(strcmp(recvCommand, "ACK")==0){
 	 		packetSend = true;
 	 		break;
 	 	} 
-	 	if(TimeoutTime > (MaxTime*10)){
-	 		break;
-	 	}
-	 }			
+	}
 //*******************************************************************
 //CLOSESOCKET   
 //*******************************************************************

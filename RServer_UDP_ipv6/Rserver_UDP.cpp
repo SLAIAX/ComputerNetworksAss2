@@ -264,7 +264,6 @@ int main(int argc, char *argv[]) {
 	   exit(0);
    }
       
-   int counter=0;
 //********************************************************************
 //BIND
 //********************************************************************
@@ -364,8 +363,14 @@ int main(int argc, char *argv[]) {
 			if(expectedSeqNum == packetNumber){
 				expectedSeqNum++;
 				sprintf(temp_buffer,"ACK %d",packetNumber);
-			} else{
-				sprintf(temp_buffer,"ACK %d",expectedSeqNum - 1);
+			} else if(packetNumber < expectedSeqNum){
+				sprintf(temp_buffer,"ACK %d",(packetNumber));
+				sendCRC = CRCpolynomial(temp_buffer);
+				sprintf(send_buffer, "%d %s \r\n", sendCRC, temp_buffer);
+				send_unreliably(s,send_buffer,(sockaddr*)&clientAddress);
+				continue;
+			}	else {
+				sprintf(temp_buffer,"ACK %d",(expectedSeqNum - 1));
 				sendCRC = CRCpolynomial(temp_buffer);
 				sprintf(send_buffer, "%d %s \r\n", sendCRC, temp_buffer);
 				send_unreliably(s,send_buffer,(sockaddr*)&clientAddress);

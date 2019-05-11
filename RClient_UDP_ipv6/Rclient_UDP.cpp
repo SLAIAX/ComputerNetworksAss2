@@ -375,6 +375,8 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
+	clock_t TimeoutStartTime;
+	clock_t TimeoutElapsedTime;
 	fclose(fin);
 	printf("End-of-File reached. \n"); 
 	memset(send_buffer, 0, sizeof(send_buffer));
@@ -383,6 +385,7 @@ int main(int argc, char *argv[]) {
 	sprintf(send_buffer, "%d %s", CRC, temp_buffer);
 	printf("\n======================================================\n");
 	bool packetSend = false;
+	TimeoutStartTime = clock();
 	while(!packetSend){
 		send_unreliably(s,send_buffer,(result->ai_addr));
 		StartTime = clock();
@@ -402,6 +405,10 @@ int main(int argc, char *argv[]) {
 		// Extract parts from packet and examine
 		if(ElapsedTime > MaxTime){
 			continue;
+		}
+		TimeoutElapsedTime = (clock() - TimeoutStartTime)/CLOCKS_PER_SEC;
+		if(TimeoutElapsedTime > MaxTime*30){
+			break;
 		}
 		int recvCRC = 0;
 		char recvCommand[256];

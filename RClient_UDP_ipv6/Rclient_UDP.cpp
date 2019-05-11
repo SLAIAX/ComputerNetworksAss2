@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) {
     	}
 	}
 
-	while(base < baseMax){ // While the window is not at the end of the data
+	while(base <= baseMax){ // While the window is not at the end of the data
 		StartTime = clock();
 		Sleep(1);  //sleep for 1 millisecond
 		ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
@@ -360,16 +360,20 @@ int main(int argc, char *argv[]) {
 				nextSeqNum++;
 				StartTime = clock();
 			} else{
-				remainingWindowNumber++;
-    			baseMax = nextSeqNum - 1;
-    			if(remainingWindowNumber == WINDOW_SIZE){
-    				break;
-    			}
+				if(remainingWindowNumber < WINDOW_SIZE){
+					remainingWindowNumber++;
+					baseMax = nextSeqNum - 1;
+				}
+
+    			// baseMax = nextSeqNum - 1;
+    			// if(remainingWindowNumber == WINDOW_SIZE){
+    			// 	//break;
+    			// }
     			//break;						//REMOVED BREAK AS WHEN THIS BREAK OCCURS, THE CONDITION TO ENTER THE IMMEDIATE IF STATEMENT IS TRUE SO IT RESENDS PACKETS IN BUFFER WHEN UN-NEEDED
 	    	}
 	    	ElapsedTime = (clock() - StartTime)/CLOCKS_PER_SEC;
 		} //If this loop finishes, timeout, NAK or corruption has occured
-		if (base < baseMax){ // Not at end of data, must resend base
+		if (base <= baseMax){ // Not at end of data, must resend base
 			for(int i = 0; i <= (baseMax-base); ++i){
 				send_unreliably(s, windowBuffer[(base+i) % WINDOW_SIZE], (result->ai_addr));
 			}
